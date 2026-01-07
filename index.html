@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FUN OWNER – ADMIN</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+body{
+  margin:0;
+  font-family:Inter,system-ui,Arial;
+  background:linear-gradient(180deg,#020617,#071426);
+  color:#e5e7eb;
+  padding:16px;
+}
+.wrap{max-width:900px;margin:auto}
+h1{font-size:20px;margin:0}
+.small{font-size:13px;color:#94a3b8}
+
+.card{
+  background:#020617;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:12px;
+  padding:14px;
+  margin-top:14px;
+}
+
+input,button{
+  font-family:inherit;
+  padding:10px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.08);
+  background:transparent;
+  color:#fff;
+}
+input{flex:1}
+.row{display:flex;gap:8px;margin-top:8px}
+
+.btn{
+  background:linear-gradient(90deg,#34d399,#22d3ee);
+  color:#022c22;
+  border:0;
+  font-weight:700;
+  cursor:pointer;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+th,td{
+  padding:8px;
+  font-size:13px;
+  border-bottom:1px dashed rgba(255,255,255,.08);
+}
+th{color:#94a3b8;text-align:left}
+
+.delBtn{
+  padding:6px 10px;
+  border-radius:8px;
+  background:#7f1d1d;
+  border:0;
+  color:#fff;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+<h1>FUN OWNER – ADMIN</h1>
+<div class="small">(Realtime Control)</div>
+
+<!-- URL CONTROL -->
+<div class="card">
+  <div class="small">App WebView Control</div>
+  <div class="row">
+    <input id="title" placeholder="Admin message / title">
+  </div>
+  <div class="row">
+    <input id="url" placeholder="Enter WebView URL">
+    <button class="btn" id="saveUrl">SAVE</button>
+  </div>
+</div>
+
+<!-- ADD USER -->
+<div class="card">
+  <div class="small">Add User</div>
+  <div class="row">
+    <input id="mobile" placeholder="Enter mobile number">
+    <button class="btn" id="addUser">ADD</button>
+  </div>
+</div>
+
+<!-- USER LIST -->
+<div class="card">
+  <div class="small">All Users</div>
+  <div id="list">Loading…</div>
+</div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getDatabase, ref, onValue, set, remove, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+const firebaseConfig = {
+  databaseURL: "https://vomueoeje-default-rtdb.firebaseio.com"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// elements
+const mobile = document.getElementById("mobile");
+const list = document.getElementById("list");
+const addBtn = document.getElementById("addUser");
+
+const titleInp = document.getElementById("title");
+const urlInp = document.getElementById("url");
+const saveUrlBtn = document.getElementById("saveUrl");
+
+function now(){
+  return new Date().toLocaleString();
+}
+
+/* ================= URL CONTROL ================= */
+
+// load existing url/title
+onValue(ref(db,"data/data"), snap=>{
+  if(!snap.exists()) return;
+  const d = snap.val();
+  titleInp.value = d.title || "";
+  urlInp.value   = d.url || "";
+});
+
+// save url/title
+saveUrlBtn.onclick = async ()=>{
+  const t = titleInp.value.trim();
+  const u = urlInp.value.trim();
+  if(!u){ alert("Enter URL"); return; }
+
+  await update(ref(db,"data/data"),{
+    title:t,
+    url:u
+  });
+
+  alert("URL Updated");
+};
+
+/* ================= USER SYSTEM ================= */
+
+// ADD USER
+addBtn.onclick = async ()=>{
+  const m = mobile.value.trim();
+  if(!m){ alert("Enter mobile"); return; }
+
+  await set(ref(db,"dbRef/"+m),{
+    mobile:m,
+    balance:"0",
+    brand:"Owner",
+    time:now()
+  });
+
+  mobile.value="";
+};
+
+// LIST USERS
+onValue(ref(db,"dbRef"), snap=>{
+  if(!snap.exists()){
+    list.innerHTML = "<div class='small'>No users</div>";
+    return;
+  }
+
+  let html = "<table><tr><th>Mobile</th><th>Time</th><th>Action</th></tr>";
+  const data = snap.val();
+
+  Object.keys(data).sort().forEach(k=>{
+    html += `
+      <tr>
+        <td>${k}</td>
+        <td>${data[k].time||""}</td>
+        <td><button class="delBtn" onclick="delUser('${k}')">Delete</button></td>
+      </tr>
+    `;
+  });
+
+  html += "</table>";
+  list.innerHTML = html;
+});
+
+// DELETE USER
+window.delUser = async (key)=>{
+  if(!confirm("Delete user "+key+" ?")) return;
+  await remove(ref(db,"dbRef/"+key));
+};
+</script>
+
+</body>
+</html>
